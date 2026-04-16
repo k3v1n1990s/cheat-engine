@@ -116,8 +116,6 @@ procedure TAbout.FormShow(Sender: TObject);
 var
     a,b,c,d: dword;
     i: integer;
-    rs: TResourceStream;
-    logopic: tpicture;
 begin
   groupbox1.Caption:=cenamewithversion;
 
@@ -138,17 +136,6 @@ begin
 
   UpdateDBVMStatus;
 
-  {$ifdef altname}
-  rs := TResourceStream.Create(HInstance, 'IMAGES_ALT_CELOGO', RT_RCDATA);
-  logopic:=TPicture.Create;
-  logopic.LoadFromStreamWithFileExt(rs,'.PNG');
-  image1.Picture:=logopic;
-  image1.Stretch:=true;
-
-
-  logopic.free;
-  freeandnil(rs);
-  {$endif}
 
 
 

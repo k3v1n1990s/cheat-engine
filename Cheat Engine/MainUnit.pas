@@ -8461,8 +8461,6 @@ var
 
   c: TControl;
 
-  logopic: TPicture;
-  rs: TResourceStream;
   cleanrun: boolean;
 
   {$ifdef windows}
@@ -8470,8 +8468,6 @@ var
   {$endif}
   extrasize: integer;
   s: string;
-
-  rname: string;
 begin
   if onetimeonly then
     exit;
@@ -8653,46 +8649,6 @@ begin
 
 
   logo.Width:=settingsbutton.width;
-
-  {$ifdef altname}
-  rname:='IMAGES_ALT_CELOGO';
-  {$else}
-  rname:='IMAGES_CELOGO';
-  {$endif}
-
-  {$ifdef windows}
-  {$ifndef altname}
-  if logo.Width>=90 then
-  {$endif}
-  {$endif}
-  begin
-    rs := TResourceStream.Create(HInstance, rname, RT_RCDATA);
-    logopic:=TPicture.Create;
-    logopic.LoadFromStreamWithFileExt(rs,'.PNG');
-    logo.Picture:=logopic;
-    logo.Stretch:=true;
-
-
-    logopic.free;
-    freeandnil(rs);
-  end;
-
-  if settingsbutton.Width>logo.Picture.Width then
-    logo.Width:=settingsbutton.width;
-
-  if logo.Width>=80 then
-  begin
-    rs := TResourceStream.Create(HInstance, rname, RT_RCDATA);
-    logopic:=TPicture.Create;
-    logopic.LoadFromStreamWithFileExt(rs,'.PNG');
-    logo.Picture:=logopic;
-    logo.Stretch:=true;
-
-
-    logopic.free;
-    freeandnil(rs);
-  end;
-
   logo.Height:=trunc((logo.Width / logo.picture.Width)*logo.picture.Height);
 
   sbOpenProcess.BorderSpacing.Around:=ScaleX(sbOpenProcess.BorderSpacing.Around, 96);
