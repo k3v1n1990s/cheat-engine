@@ -456,9 +456,9 @@ begin
   if (debuggerthread=nil) then
   begin
     if @DebugActiveProcessStop=@DebugActiveProcessStopProstitute then
-      mes:='This will attach the debugger of Cheat Engine to the current process. If you close Cheat Engine while the game is running, the game will close too. Are you sure you want to do this?'
+      mes:='This will attach the debugger of Wq7xMv3R to the current process. If you close Wq7xMv3R while the game is running, the game will close too. Are you sure you want to do this?'
     else
-      mes:='This will attach the debugger of Cheat Engine to the current process. Continue?';
+      mes:='This will attach the debugger of Wq7xMv3R to the current process. Continue?';
 
     {$ifndef net}
     if ask then
@@ -1488,7 +1488,7 @@ begin
         attachedevent.SetEvent;
 
 
-        err:='Cheat Engine failed to create the process. (Error='+pchar(IntToStr(GetLastError))+')';
+        err:='Wq7xMv3R failed to create the process. (Error='+pchar(IntToStr(GetLastError))+')';
         messagebox(0,pchar(err),'Create failure',mb_ok);
 
         {$ifndef net}
@@ -1548,7 +1548,7 @@ begin
         attachedevent.SetEvent;
 
         {$ifndef net}
-        err:='Cheat Engine failed to attach to the process. (Error='+IntToStr(GetLastError)+')';
+        err:='Wq7xMv3R failed to attach to the process. (Error='+IntToStr(GetLastError)+')';
         messagebox(0,pchar(err),'Attach failure',mb_ok);
         postmessage(mainform.Handle,WM_USER+1,0,0);  //set debuggerthread to nil
         {$endif}
@@ -1793,12 +1793,12 @@ begin
                             debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
 
                             j:=devent.dwThreadId;
-                            if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                            if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
 
                             while j<>devent.dwthreadid do
                             begin
                               debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
-                              if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                              if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
                             end;
                             resetbreakpoint;
 
@@ -1852,12 +1852,12 @@ begin
                       debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
 
                       j:=devent.dwThreadId;
-                      if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                      if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
 
                       while j<>devent.dwthreadid do
                       begin
                         debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
-                        if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                        if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
                       end;
 
                       //set the breakpoint back if needed
@@ -2095,12 +2095,12 @@ begin
                           debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
 
                           j:=devent.dwThreadId;
-                          if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                          if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
 
                           while j<>devent.dwthreadid do
                           begin
                             debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
-                            if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                            if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
                           end;
                           resetbreakpoint;
 
@@ -2135,12 +2135,12 @@ begin
                     debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
 
                     i:=devent.dwThreadId;
-                    if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                    if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
 
                     while i<>devent.dwthreadid do
                     begin
                       debugging:=ContinueDebugEvent(devent.dwProcessId,devent.dwThreadId,DBG_CONTINUE);
-                      if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Cheat Engine Debugger',0);
+                      if not WaitForDebugEvent(devent,10000) then application.MessageBox('userbreakpoint bug','Wq7xMv3R Debugger',0);
 
                     end;
 

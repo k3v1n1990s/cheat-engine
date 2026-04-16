@@ -61,11 +61,11 @@ const
   {$endif}
 {$ELSE}
   {$ifdef cpu64}
-    LUA_NAME = 'lua53-64.dll';
-    LUA_LIB_NAME = 'lua53-64.dll';
+    LUA_NAME = 'nxrt64.dll';
+    LUA_LIB_NAME = 'nxrt64.dll';
   {$else}
-  LUA_NAME = 'lua53-32.dll';
-  LUA_LIB_NAME = 'lua53-32.dll';
+  LUA_NAME = 'nxrt32.dll';
+  LUA_LIB_NAME = 'nxrt32.dll';
   {$endif}
 {$ENDIF}
 

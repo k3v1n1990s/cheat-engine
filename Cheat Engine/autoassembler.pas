@@ -1,4 +1,4 @@
-// Copyright Cheat Engine. All Rights Reserved.
+// Copyright Wq7xMv3R. All Rights Reserved.
 
 unit autoassembler;
 
@@ -1849,7 +1849,7 @@ begin
   {$endif}
 
 {$ifndef jni}
-  if pluginhandler=nil then exit; //Error. Cheat Engine is not properly configured
+  if pluginhandler=nil then exit; //Error. Wq7xMv3R is not properly configured
 
   aaid:=InterLockedIncrement(nextaaid);
   pluginhandler.handleAutoAssemblerPlugin(@currentlinep, 0, aaid); //tell the plugins that an autoassembler script is about to get executed

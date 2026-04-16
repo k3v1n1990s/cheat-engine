@@ -5,9 +5,7 @@ unit MemoryBrowserFormUnit;
 interface
 
 uses
-  {$ifdef darwin}
   LCLType,
-  {$endif}
   {$ifdef windows}
   jwawindows, windows,imagehlp,
   {$endif}
@@ -539,6 +537,8 @@ type
     procedure miDebugExecuteTillReturnClick(Sender: TObject);
     procedure lvStacktraceDataData(Sender: TObject; Item: TListItem);
     procedure lvStacktraceDataDblClick(Sender: TObject);
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   private
     { Private declarations }
 
@@ -746,6 +746,9 @@ var
 
 
   
+var
+  _rndMBClassName: string;
+
 implementation
 
 uses Valuechange, MainUnit, debugeventhandler, findwindowunit,
@@ -848,6 +851,12 @@ resourcestring
 function TMemoryBrowser.getShowValues: boolean;
 begin
   result:=FShowValues;
+end;
+
+procedure TMemoryBrowser.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  StrPCopy(Params.WinClassName, _rndMBClassName);
 end;
 
 procedure TMemoryBrowser.setShowValues(newstate: boolean);
@@ -6221,7 +6230,18 @@ end;
 
 
 
+function _GenRndStr_MB(len: integer): string;
+var i: integer;
+    c: string;
+begin
+  c:='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  result:='';
+  for i:=1 to len do
+    result:=result+c[Random(Length(c))+1];
+end;
+
 initialization
+  _rndMBClassName:=_GenRndStr_MB(10+Random(5));
   MemoryBrowsers:=TList.Create;
 
   {$i MemoryBrowserFormUnit.lrs}

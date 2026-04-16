@@ -9,7 +9,7 @@ object MainForm: TMainForm
   VertScrollBar.Visible = False
   AllowDropFiles = True
   AutoSize = True
-  Caption = 'Cheat Engine'
+  Caption = 'Wq7xMv3R'
   ClientHeight = 572
   ClientWidth = 734
   Menu = MainMenu1
@@ -700,7 +700,7 @@ object MainForm: TMainForm
       AnchorSideRight.Control = LogoPanel
       Left = 101
       Height = 16
-      Hint = 'This shows how far Cheat Engine is with searching'
+      Hint = 'This shows how far Wq7xMv3R is with searching'
       Top = 15
       Width = 581
       Anchors = [akTop, akLeft, akRight]
@@ -2188,14 +2188,14 @@ object MainForm: TMainForm
   end
   object OpenDialog1: TOpenDialog
     DefaultExt = '.CT'
-    Filter = 'All supported cheat tables|*.CT;*.CETRAINER|Cheat Engine Trainer (*.CETRAINER)|*.CETRAINER|All files (*.*)|*.*|Cheat Engine Tables (*.CT)|*.CT'
+    Filter = 'All supported cheat tables|*.CT;*.CETRAINER|Wq7xMv3R Trainer (*.CETRAINER)|*.CETRAINER|All files (*.*)|*.*|Wq7xMv3R Tables (*.CT)|*.CT'
     Options = [ofHideReadOnly, ofFileMustExist, ofEnableSizing, ofAutoPreview]
     Left = 48
     Top = 104
   end
   object SaveDialog1: TSaveDialog
     DefaultExt = '.CT'
-    Filter = 'Cheat Engine Tables (*.CT)|*.CT|Cheat Engine Trainer (*.CETRAINER)|*.CETRAINER|Cheat Engine Trainer Standalone (*.EXE)|*.EXE'
+    Filter = 'Wq7xMv3R Tables (*.CT)|*.CT|Wq7xMv3R Trainer (*.CETRAINER)|*.CETRAINER|Wq7xMv3R Trainer Standalone (*.EXE)|*.EXE'
     Options = [ofReadOnly, ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing, ofAutoPreview]
     Left = 16
     Top = 104
@@ -2652,7 +2652,7 @@ object MainForm: TMainForm
       Caption = '&Help'
       OnClick = miHelpClick
       object Helpindex1: TMenuItem
-        Caption = 'Cheat Engine Help'
+        Caption = 'Wq7xMv3R Help'
         ImageIndex = 18
         OnClick = Helpindex1Click
       end
@@ -2662,23 +2662,23 @@ object MainForm: TMainForm
         OnClick = miLuaDocumentationClick
       end
       object miTutorial: TMenuItem
-        Caption = 'Cheat Engine Tutorial'
+        Caption = 'Wq7xMv3R Tutorial'
         ImageIndex = 23
         OnClick = miTutorialClick
       end
       object miTutorial64: TMenuItem
-        Caption = 'Cheat Engine Tutorial (x86_64)'
+        Caption = 'Wq7xMv3R Tutorial (x86_64)'
         ImageIndex = 24
         OnClick = miTutorial64Click
       end
       object MenuItem16: TMenuItem
-        Caption = 'Cheat Engine Tutorial (AArch64)'
+        Caption = 'Wq7xMv3R Tutorial (AArch64)'
         ImageIndex = 24
         Visible = False
         OnClick = MenuItem16Click
       end
       object MenuItem15: TMenuItem
-        Caption = 'Cheat Engine Tutorial Games'
+        Caption = 'Wq7xMv3R Tutorial Games'
         ImageIndex = 26
         OnClick = MenuItem15Click
       end

@@ -310,7 +310,7 @@ object frameHotkeyConfig: TframeHotkeyConfig
       Top = 50
       Width = 251
       BorderSpacing.Left = 2
-      Caption = 'Center Cheat Engine when bringing to front'
+      Caption = 'Center Wq7xMv3R when bringing to front'
       Checked = True
       State = cbChecked
       TabOrder = 2
@@ -325,7 +325,7 @@ object frameHotkeyConfig: TframeHotkeyConfig
       Width = 392
       BorderSpacing.Left = 2
       BorderSpacing.Top = 2
-      Caption = 'Hide some/all windows instead of trying to bring cheat engine to front'
+      Caption = 'Hide some/all windows instead of trying to bring Wq7xMv3R to front'
       Checked = True
       State = cbChecked
       TabOrder = 3

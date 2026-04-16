@@ -7,7 +7,7 @@ object About: TAbout
   AutoSize = True
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
-  Caption = 'About Cheat Engine'
+  Caption = 'About Wq7xMv3R'
   ClientHeight = 310
   ClientWidth = 488
   OnClose = FormClose
@@ -22,7 +22,7 @@ object About: TAbout
     Width = 488
     Align = alClient
     AutoSize = True
-    Caption = 'Cheat Engine'
+    Caption = 'Wq7xMv3R'
     ClientHeight = 290
     ClientWidth = 484
     TabOrder = 0
@@ -455,7 +455,7 @@ object About: TAbout
           AnchorSideTop.Control = Panel2
           Left = 6
           Height = 25
-          Hint = 'If you like Cheat Engine and want to contribute something to the development, join CE''s Patreon'
+          Hint = 'If you like Wq7xMv3R and want to contribute something to the development, join CE''s Patreon'
           Top = 6
           Width = 67
           AutoSize = True

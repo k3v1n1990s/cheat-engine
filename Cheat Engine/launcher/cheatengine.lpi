@@ -10,13 +10,13 @@
         <MainUnitHasScaledStatement Value="False"/>
         <CompatibilityMode Value="True"/>
       </Flags>
-      <Title Value="Cheat Engine launcher"/>
+      <Title Value="Wq7xMv3R launcher"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <XPManifest>
         <DpiAware Value="True/PM"/>
-        <TextName Value="Cheat Engine.Cheat Engine.Launcher"/>
-        <TextDesc Value="Launches the best suitable cheatengine-*.exe"/>
+        <TextName Value="Wq7xMv3R.Wq7xMv3R.Launcher"/>
+        <TextDesc Value="Launches the best suitable application"/>
       </XPManifest>
       <Icon Value="0"/>
     </General>
@@ -35,7 +35,7 @@
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="..\bin\Cheat Engine.exe" ApplyConventions="False"/>
+            <Filename Value="..\bin\NexUtil.exe" ApplyConventions="False"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
@@ -293,7 +293,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="..\bin\Cheat Engine.exe"/>
+      <Filename Value="..\bin\NexUtil.exe"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

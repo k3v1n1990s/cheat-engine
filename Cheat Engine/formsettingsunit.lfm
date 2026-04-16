@@ -5,7 +5,7 @@ object formSettings: TformSettings
   Width = 902
   AutoSize = True
   BorderIcons = [biSystemMenu]
-  Caption = 'Cheat Engine settings'
+  Caption = 'Wq7xMv3R settings'
   ClientHeight = 817
   ClientWidth = 902
   OnChangeBounds = FormChangeBounds
@@ -205,7 +205,7 @@ object formSettings: TformSettings
             AnchorSideTop.Side = asrBottom
             Left = 181
             Height = 23
-            Hint = 'The number of milliseconds that Cheat Engine will wait before refreshing the list of addresses'
+            Hint = 'The number of milliseconds that Wq7xMv3R will wait before refreshing the list of addresses'
             Top = 522
             Width = 53
             ParentShowHint = False
@@ -219,7 +219,7 @@ object formSettings: TformSettings
             AnchorSideTop.Side = asrBottom
             Left = 181
             Height = 23
-            Hint = 'The number of milliseconds that Cheat Engine will wait before resetting the frozen addresses to their original value.'
+            Hint = 'The number of milliseconds that Wq7xMv3R will wait before resetting the frozen addresses to their original value.'
             Top = 547
             Width = 53
             BorderSpacing.Top = 2
@@ -291,7 +291,7 @@ object formSettings: TformSettings
             AnchorSideRight.Side = asrBottom
             Left = 181
             Height = 23
-            Hint = 'The number of milliseconds that Cheat Engine will wait before refreshing the list of found addresses'
+            Hint = 'The number of milliseconds that Wq7xMv3R will wait before refreshing the list of found addresses'
             Top = 572
             Width = 53
             BorderSpacing.Left = 4
@@ -2985,7 +2985,7 @@ object formSettings: TformSettings
   end
   object OpenDialog1: TOpenDialog
     DefaultExt = '.DLL'
-    Filter = 'Cheat Engine Plugins (*.dll)|*.dll'
+    Filter = 'Wq7xMv3R Plugins (*.dll)|*.dll'
     Left = 52
     Top = 264
   end

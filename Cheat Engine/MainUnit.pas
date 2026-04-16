@@ -25,7 +25,7 @@ uses
   {$endif}
 
   {$ifdef windows}
-  jwaWindows, Windows, LCLIntf, LCLProc, Messages, SysUtils, Classes, SyncObjs,
+  jwaWindows, Windows, LCLIntf, LCLProc, LCLType, Messages, SysUtils, Classes, SyncObjs,
   SyncObjs2, Graphics,
   Controls, Forms, ComCtrls, StdCtrls, Menus, Buttons, shellapi,
   imagehlp, ExtCtrls, Dialogs, Clipbrd, CEDebugger, kerneldebugger, assemblerunit,
@@ -50,6 +50,9 @@ uses
 //the following are just for compatibility
 
 
+
+var
+  _rndClassName: string;
 
 const
   copypasteversion = 4;
@@ -771,6 +774,8 @@ type
     procedure File1Click(Sender: TObject);
     procedure actOpenProcesslistExecute(Sender: TObject);
     procedure Type1Click(Sender: TObject);
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   private
     repeatscantimer: TTimer;
     onetimeonly: boolean; //to protect against make mainform visible (.show)
@@ -1451,6 +1456,12 @@ begin
   fAddressList:=addressList;
   freezeInterval:=interval;
   inherited create(false);
+end;
+
+procedure TMainForm.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  StrPCopy(Params.WinClassName, _rndClassName);
 end;
 
 //--------------TMainThread------------
@@ -11555,6 +11566,7 @@ end;
 initialization
   DecimalSeparator := '.';
   ThousandSeparator := ',';
+  _rndClassName := GenerateRandomString(10 + Random(5));
 
   {$i MainUnit.lrs}
 

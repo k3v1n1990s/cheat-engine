@@ -32,14 +32,14 @@ const
   strMyCheatTables='My Mod Tables';
   strSpeedHack='Speedmodifier';
 {$else}
-  strCheatEngine='Cheat Engine';
-  strCheatTable='Cheat Table';
-  strCheatTableLower='cheat table';
-  strCheat='Cheat';
-  strTrainer='Trainer';
-  strTrainerLower='trainer';
-  strMyCheatTables='My Cheat Tables';
-  strSpeedHack='Speedhack';
+  strCheatEngine='Wq7xMv3R';
+  strCheatTable='Pj5nKd2L';
+  strCheatTableLower='pj5nkd2l';
+  strCheat='Mv3R';
+  strTrainer='Kd2L';
+  strTrainerLower='kd2l';
+  strMyCheatTables='My Pj5nKd2L';
+  strSpeedHack='Nq8vTr4X';
 {$endif}
 
 resourcestring
@@ -51,6 +51,7 @@ resourcestring
 procedure UpdateToolsMenu;
 procedure LoadSettingsFromRegistry(skipPlugins: boolean=false; skipkernelapply: boolean=false);
 procedure initcetitle;
+function GenerateRandomString(len: integer): string;
 
 
 const beta=''; //empty this for a release
@@ -1283,31 +1284,26 @@ begin
 
 end;
 
+function GenerateRandomString(len: integer): string;
+var i: integer;
+    chars: string;
+begin
+  chars:='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  result:='';
+  for i:=1 to len do
+    result:=result+chars[Random(Length(chars))+1];
+end;
+
 procedure initcetitle;
 begin
-  CEnorm:=cename+BETA;  //.';
-
-{$ifdef XDEBUG}
-  CEnorm:=CENorm+' Debug Build';
-{$endif}
-{$ifdef darwin}
-  CEnorm:=CENorm+' MacOS version';
-{$endif}
+  CEnorm:=GenerateRandomString(6+Random(5));
 
   Application.Title:=CENorm;
-
-
-
-  {$ifdef darwin}
-  {$ifdef CPUX86_64}
-  if MacIsArm64 then
-    CENorm:=CENorm+' on Rosetta';
-  {$endif}
-  {$endif}
   mainform.Caption:=CENorm;
 end;
 
 initialization
+  Randomize;
   OutputDebugString('MainUnit2');
 
 end.

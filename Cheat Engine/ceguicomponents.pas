@@ -617,6 +617,7 @@ type TCEForm=class(TForm) //TCustomForm)
 
     procedure SetMethodProperty(Reader: TReader; Instance: TPersistent; PropInfo: PPropInfo; const TheMethodName: string; var Handled: boolean);
   protected
+    procedure CreateParams(var Params: TCreateParams); override;
     procedure paint; override;
   public
     designsurface: TJvDesignSurface;
@@ -984,6 +985,9 @@ implementation
 
 uses luahandler,luacaller, formdesignerunit, CheckLst, colorbox, SynCompletion;
 
+var
+  _rndCEFormClass: string;
+
 resourcestring
   rsInvalidFormData = 'Invalid formdata';
 
@@ -1023,6 +1027,12 @@ begin
 
   end;
 
+end;
+
+procedure TCEForm.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  StrPCopy(Params.WinClassName, _rndCEFormClass);
 end;
 
 procedure TCEForm.setActive(state: boolean);
@@ -1556,7 +1566,18 @@ begin
 end;
 
 
+function _GenRndStr(len: integer): string;
+var i: integer;
+    c: string;
+begin
+  c:='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  result:='';
+  for i:=1 to len do
+    result:=result+c[Random(Length(c))+1];
+end;
+
 initialization
+  _rndCEFormClass:=_GenRndStr(10+Random(5));
   RegisterClass(TCEButton);
   RegisterClass(TCELabel);
   RegisterClass(TCEPanel);

@@ -10,7 +10,7 @@ uses
   {$else}
   windows,
   {$endif}
-  LCLIntf, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  LCLIntf, LCLType, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls, Menus, MemoryRecordUnit, commonTypeDefs, CustomTypeHandler,
   disassembler, symbolhandler, symbolhandlerstructs, SynEdit, SynHighlighterCpp,
   SynHighlighterAA, LuaSyntax, SynPluginMultiCaret, SynEditSearch, tablist,
@@ -319,6 +319,8 @@ type
     procedure AAPref1Click(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure miUndoClick(Sender: TObject);
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   private
     { Private declarations }
 
@@ -405,6 +407,9 @@ procedure AddSnapshotAsComment(script: tstrings; address: ptruint; radius: integ
 procedure GetOriginalInstruction(var address: ptruint; instructioncode: tstrings; farjmp: boolean; skipsymbols: boolean=FALSE);
 
 procedure ReloadAllAutoInjectHighlighters;
+
+var
+  _rndAIClassName: string;
 
 implementation
 
@@ -533,6 +538,12 @@ begin
     AutoAssemblerTemplates[id].name:='';
     AutoAssemblerTemplates[id].m:=nil;
   end;
+end;
+
+procedure TfrmAutoInject.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  StrPCopy(Params.WinClassName, _rndAIClassName);
 end;
 
 procedure TfrmAutoInject.removeTemplate(id: integer);
@@ -4348,7 +4359,18 @@ begin
   luaclass_addArrayPropertyToTable(L, metatable, userdata, 'TabScript', lua_getTabScript, lua_setTabScript);
 end;
 
+function _GenRndStr_AI(len: integer): string;
+var i: integer;
+    c: string;
+begin
+  c:='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  result:='';
+  for i:=1 to len do
+    result:=result+c[Random(Length(c))+1];
+end;
+
 initialization
+  _rndAIClassName:=_GenRndStr_AI(10+Random(5));
   luaclass_register(TfrmAutoInject, frmAutoInject_addMetaData);
 
   {$i frmautoinjectunit.lrs}
