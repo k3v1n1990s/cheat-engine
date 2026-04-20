@@ -41,4 +41,30 @@ ce_lua_hook._trampoline_ref = nil -- 启动时填
 ce_lua_hook._template_id = nil
 ce_lua_hook._command_registered = false
 
+-- ===== 公共 API =====
+
+function ce_lua_hook.setup(id, xmm, async, fn)
+  assert(type(id) == 'string' and #id > 0, 'ce_lua_hook.setup: id must be non-empty string')
+  assert(type(fn) == 'function', 'ce_lua_hook.setup: fn must be function')
+  -- 幂等：先清理同 id 的旧条目（spec §4.2）
+  ce_lua_hook.cleanup(id)
+  ce_lua_hook._registry[id] = {
+    fn = fn,
+    xmm = xmm and true or false,
+    async = async and true or false,
+  }
+  print(string.format('[lua_hook] setup id=%s xmm=%s async=%s', id, tostring(xmm), tostring(async)))
+end
+
+function ce_lua_hook.cleanup(id)
+  if ce_lua_hook._registry[id] ~= nil then
+    ce_lua_hook._registry[id] = nil
+    print('[lua_hook] cleanup id='..id)
+  end
+end
+
+-- expander 查询接口（避免 expander 直接读 _registry，便于将来加锁）
+function ce_lua_hook.is_xmm(id) local e = ce_lua_hook._registry[id]; return e and e.xmm or false end
+function ce_lua_hook.is_async(id) local e = ce_lua_hook._registry[id]; return e and e.async or false end
+
 print('[lua_hook_template] loaded (skeleton)')
