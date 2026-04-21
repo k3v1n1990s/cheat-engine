@@ -142,6 +142,111 @@ end
 
 -- ===== AA 自定义命令: luahookpoint(<id>) =====
 
+-- 生成 hook 点的 ASM 字符串。id 用作所有内部标号的前缀，避免多 hook 符号冲突。
+-- xmm: 是否保存 XMM。async: 异步模式（trampoline 调用的 5th 参数）。
+local function build_hook_asm(id, xmm, async, trampoline_refid)
+  local L = ce_lua_hook.LAYOUT
+  local async_flag = async and 1 or 0
+
+  -- 各 hook 内部标号，全部以 id 为前缀
+  local lbl = {
+    save     = 'lh_'..id..'_save',
+    restore  = 'lh_'..id..'_restore_exec',
+    skip     = 'lh_'..id..'_skip',
+    params   = 'lh_'..id..'_params',
+    saved_rsp= 'lh_'..id..'_saved_rsp',  -- 给 r11 用的内存槽（若不用栈保存）
+  }
+
+  local lines = {}
+  local function emit(s) table.insert(lines, s) end
+
+  -- 预先 alloc params 数组（[ctxbuf, hookid_str]）和 saved_rsp 槽
+  emit('alloc('..lbl.params..',16)')
+  emit('alloc('..lbl.saved_rsp..',8)')
+  emit(lbl.params..':')
+  emit('  dq ctxbuf')
+  emit('  dq hookid_str')
+  emit('')
+
+  -- ===== 保存 GPR =====
+  emit(lbl.save..':')
+  emit('  mov [ctxbuf+'..string.format('0x%X', L.rax)..'], rax')   -- 先保 rax
+  emit('  mov rax, ctxbuf')                                         -- rax 变 scratch
+  for _, r in ipairs(ce_lua_hook.GPR_FIELDS) do
+    if r ~= 'rax' then
+      emit(string.format('  mov [rax+0x%X], %s', L[r], r))
+    end
+  end
+  -- rsp 此时和 hook 点一致（jmp 不改 rsp）
+  -- 保存 rflags
+  emit('  pushfq')
+  emit('  pop qword ptr [rax+'..string.format('0x%X', L.rflags)..']')
+  -- 保存 rip = hook_original
+  emit('  lea rcx, [hook_original]')
+  emit('  mov [rax+'..string.format('0x%X', L.rip)..'], rcx')
+
+  if xmm then
+    for i = 0, 15 do
+      emit(string.format('  movdqu [rax+0x%X], xmm%d', L.xmm0_off + i*16, i))
+    end
+  end
+
+  -- ===== 调 luaclient =====
+  -- MS x64 ABI: rcx, rdx, r8, r9 是前 4 参数。需要 16 字节栈对齐 + 0x20 shadow。
+  -- 用 r11 保存原 rsp，对齐 rsp，调完恢复。r11 是 volatile 已无用。
+  emit('  mov ['..lbl.saved_rsp..'], rsp')
+  emit('  and rsp, -0x10')
+  emit('  sub rsp, 0x20')
+  emit('  mov ecx, '..string.format('0x%X', trampoline_refid))
+  emit('  mov edx, 2')
+  emit('  lea r8, ['..lbl.params..']')
+  emit('  mov r9d, '..async_flag)
+  emit('  call CELUA_ExecuteFunctionByReference')
+  emit('  mov rsp, ['..lbl.saved_rsp..']')
+
+  -- rax = skip flag (0/1)
+  -- 把 skip 暂存到 rflags 的"未用位"做条件? 不——更简单：直接根据 rax 跳转，
+  -- 然后两条恢复路径分别恢复寄存器。
+  emit('  test rax, rax')
+  emit('  jnz '..lbl.skip)
+
+  -- ===== 恢复并执行原指令 =====
+  emit(lbl.restore..':')
+  if xmm then
+    for i = 0, 15 do
+      emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
+    end
+  end
+  emit('  push qword ptr [ctxbuf+'..string.format('0x%X', L.rflags)..']')
+  emit('  popfq')
+  for _, r in ipairs(ce_lua_hook.GPR_FIELDS) do
+    if r ~= 'rax' then
+      emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r]))
+    end
+  end
+  emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')   -- rax 最后恢复
+  emit('  jmp hook_original')
+
+  -- ===== 跳过原指令 =====
+  emit(lbl.skip..':')
+  if xmm then
+    for i = 0, 15 do
+      emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
+    end
+  end
+  emit('  push qword ptr [ctxbuf+'..string.format('0x%X', L.rflags)..']')
+  emit('  popfq')
+  for _, r in ipairs(ce_lua_hook.GPR_FIELDS) do
+    if r ~= 'rax' then
+      emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r]))
+    end
+  end
+  emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')
+  emit('  jmp hook_return')
+
+  return table.concat(lines, '\n')
+end
+
 local function luahookpoint_expander(params, syntaxcheck)
   -- params 是括号里的内容：去除空白
   local id = (params or ''):gsub('^%s+', ''):gsub('%s+$', '')
@@ -155,8 +260,14 @@ local function luahookpoint_expander(params, syntaxcheck)
     return ''  -- phase 1 不生成代码，只校验
   end
 
-  -- phase 2 暂未实现，下个 task 写
-  return nil, '[luahookpoint] phase 2 not implemented yet'
+  -- phase 2: 生成汇编
+  if ce_lua_hook._trampoline_ref == nil then
+    return nil, '[luahookpoint] trampoline not registered yet (CE startup incomplete?). Restart CE.'
+  end
+
+  local xmm   = ce_lua_hook.is_xmm(id)
+  local async = ce_lua_hook.is_async(id)
+  return build_hook_asm(id, xmm, async, ce_lua_hook._trampoline_ref)
 end
 
 -- 注册（顶层执行，autorun 时立即注册）
