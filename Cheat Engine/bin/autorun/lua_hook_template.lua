@@ -188,24 +188,21 @@ local function build_hook_asm(id, xmm, async, trampoline_refid)
     save     = 'lh_'..id..'_save',
     restore  = 'lh_'..id..'_restore_exec',
     skip     = 'lh_'..id..'_skip',
-    params   = 'lh_'..id..'_params',
-    saved_rsp= 'lh_'..id..'_saved_rsp',  -- 给 r11 用的内存槽（若不用栈保存）
+    params   = 'lh_'..id..'_params',     -- 数据：[ctxbuf, hookid_str]，放 newmem 末尾
+    saved_rsp= 'lh_'..id..'_saved_rsp',  -- 数据：8 字节槽，放 newmem 末尾
   }
 
   local lines = {}
   local function emit(s) table.insert(lines, s) end
 
-  -- 预先 alloc params 数组（[ctxbuf, hookid_str]）和 saved_rsp 槽
-  emit('alloc('..lbl.params..',16)')
-  emit('alloc('..lbl.saved_rsp..',8)')
-  -- 显式声明纯标号（CE AA 要求 label 必须先 declare 才能用作位置定义）
+  -- 全部用 label() 声明（不 alloc——alloc 会切到独立内存块导致 write pointer
+  -- 离开 newmem，后面的代码都写不进 newmem）。所有 label 的位置由后面的
+  -- 冒号-label 在 newmem 内固定，数据块放在所有 jmp 之后不会被执行。
   emit('label('..lbl.save..')')
   emit('label('..lbl.restore..')')
   emit('label('..lbl.skip..')')
-  emit(lbl.params..':')
-  emit('  dq ctxbuf')
-  emit('  dq hookid_str')
-  emit('')
+  emit('label('..lbl.params..')')
+  emit('label('..lbl.saved_rsp..')')
 
   -- ===== 保存 GPR =====
   emit(lbl.save..':')
@@ -282,6 +279,13 @@ local function build_hook_asm(id, xmm, async, trampoline_refid)
   end
   emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')   -- rax 最后恢复
   emit('  jmp hook_return')
+
+  -- ===== 数据块（落在 newmem 末尾，所有 jmp 之后，永不执行）=====
+  emit(lbl.params..':')
+  emit('  dq ctxbuf')
+  emit('  dq hookid_str')
+  emit(lbl.saved_rsp..':')
+  emit('  dq 0')
 
   return table.concat(lines, '\n')
 end
