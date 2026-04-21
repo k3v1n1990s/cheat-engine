@@ -444,10 +444,10 @@ end)
 INJECT:
 db %s
 unregistersymbol(INJECT)
-//sleep 50ms 让线程走出 newmem（按需启用，DISABLE 后偶发崩溃时取消注释）
-//pause
+//sleep 50ms 让 in-flight 线程走出 newmem（按需启用，DISABLE 后偶发崩溃时取消注释）
+//  注：不要用 pause/unpause——pause 会暂停 newmem 内的线程，dealloc 后 unpause 就崩。
+//  只需 INJECT 字节恢复（上面已做）+ sleep 即可。
 //sleep(50)
-//unpause
 dealloc(newmem)
 dealloc(ctxbuf)
 dealloc(hookid_str)
