@@ -339,6 +339,106 @@ function ce_lua_hook.extract_aob_pattern(addr, length)
   return table.concat(out, ' ')
 end
 
+-- ===== 模板脚本生成 =====
+
+-- config = {
+--   id = string,
+--   addr = integer,
+--   strategy = 'hardcode' | 'module' | 'aob',
+--   aob_length = integer,                 -- 仅 strategy='aob'
+--   xmm = bool, async = bool,
+--   module_name = string, module_offset = integer,  -- strategy='module' 时填
+-- }
+
+local function build_address_block(config, orig_len, orig_bytes)
+  local lines = {}
+  local function add(s) table.insert(lines, s) end
+
+  if config.strategy == 'hardcode' then
+    add(string.format('define(INJECT, %X)', config.addr))
+  elseif config.strategy == 'module' then
+    add(string.format('define(INJECT, "%s"+%X)', config.module_name, config.module_offset))
+  elseif config.strategy == 'aob' then
+    local pattern = ce_lua_hook.extract_aob_pattern(config.addr, config.aob_length)
+    -- 估算 hook 点在签名内的偏移（默认从签名起点 hook，简单起见）
+    add(string.format('aobscanmodule(INJECT, %s, %s)', config.module_name or '<game>.exe', pattern))
+  else
+    error('unknown strategy: '..tostring(config.strategy))
+  end
+  return table.concat(lines, '\n')
+end
+
+function ce_lua_hook.build_enable_script(config)
+  local orig_len, orig_bytes = ce_lua_hook.compute_orig_len(config.addr)
+  local addr_block = build_address_block(config, orig_len, orig_bytes)
+  local hex = ce_lua_hook.bytes_to_hex(orig_bytes)
+  local nop_pad = orig_len - 5
+  local nop_line = (nop_pad > 0) and string.rep('  nop\n', nop_pad):gsub('\n$', '') or ''
+  local xmm_flag = config.xmm and 'true' or 'false'
+  local async_flag = config.async and 'true' or 'false'
+
+  return string.format([[
+[ENABLE]
+loadlibrary(luaclient-x86_64.dll)
+%s
+alloc(newmem,$1000,INJECT)
+alloc(ctxbuf,$200)
+alloc(hookid_str,64)
+label(hook_return)
+label(hook_original)
+registersymbol(INJECT)
+
+hookid_str:
+db '%s',0
+
+newmem:
+luahookpoint(%s)
+hook_original:
+db %s
+jmp hook_return
+
+INJECT:
+jmp newmem
+%s
+hook_return:
+
+{$lua}
+if syntaxcheck then return end
+ce_lua_hook.setup('%s', %s, %s, function(ctx)
+  -- TODO: 你的回调逻辑
+  -- 例: print(string.format('rax=%%X rip=%%X', ctx.rax, ctx.rip))
+  -- 修改 ctx.rax / ctx.rcx ... 会在 hook 返回时写回真实寄存器
+  -- 用 readBytes(ctx.rsp + N, ...) 读栈
+  -- 返回 false 跳过原指令（仅同步模式有效）
+end)
+{$asm}
+
+[DISABLE]
+INJECT:
+db %s
+unregistersymbol(INJECT)
+//sleep 50ms 让线程走出 newmem（按需启用，DISABLE 后偶发崩溃时取消注释）
+//pause
+//sleep(50)
+//unpause
+dealloc(newmem)
+dealloc(ctxbuf)
+dealloc(hookid_str)
+{$lua}
+ce_lua_hook.cleanup('%s')
+{$asm}
+]],
+  addr_block,
+  config.id,
+  config.id,
+  hex,
+  nop_line,
+  config.id, xmm_flag, async_flag,
+  hex,
+  config.id
+  )
+end
+
 -- ===== 启动注册 =====
 
 -- CELUA_GetFunctionReferenceFromName 在 CE 主进程是 createRef 的同义包装。
