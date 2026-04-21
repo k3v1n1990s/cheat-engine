@@ -518,21 +518,23 @@ function ce_lua_hook.build_enable_script(config)
   if bits == 64 then
     dll = 'luaclient-x86_64.dll'
     ctxbuf_size = '$200'
-    sample_cb = "  -- 例: print(string.format('rax=%%X rip=%%X', ctx.rax, ctx.rip))\n"
+    -- 注意：sample_cb 是通过 %s 替换进模板的值，不是 string.format 的模板，
+    -- 所以 % 在这里是字面量字符，不需要双写转义。
+    sample_cb = "  -- 例: print(string.format('rax=%X rip=%X', ctx.rax, ctx.rip))\n"
               .."  -- 修改 ctx.rax / ctx.rcx ... 会在 hook 返回时写回真实寄存器\n"
               .."  -- 用 readBytes(ctx.rsp + N, ...) 读栈\n"
               .."  -- return 0 / nil  → 默认（执行原指令并继续）\n"
-              .."  -- return <addr>   → 跳到该地址（绕过原指令；常见用法\n"
-              ..[[  --                    return ctx.rip + 5  -- 跳过 5 字节原指令]]
+              .."  -- return <addr>   → 跳到该地址（绕过原指令；典型用法：\n"
+              .."  --                    return ctx.rip + 5   -- 跳过 5 字节原指令）"
   else
     dll = 'luaclient-i386.dll'
     ctxbuf_size = '$100'
-    sample_cb = "  -- 例: print(string.format('eax=%%X eip=%%X', ctx.eax, ctx.eip))\n"
+    sample_cb = "  -- 例: print(string.format('eax=%X eip=%X', ctx.eax, ctx.eip))\n"
               .."  -- 修改 ctx.eax / ctx.ecx ... 会在 hook 返回时写回真实寄存器\n"
               .."  -- 用 readBytes(ctx.esp + N, ...) 读栈\n"
               .."  -- return 0 / nil  → 默认（执行原指令并继续）\n"
-              .."  -- return <addr>   → 跳到该地址（绕过原指令；常见用法\n"
-              ..[[  --                    return ctx.eip + 5  -- 跳过 5 字节原指令]]
+              .."  -- return <addr>   → 跳到该地址（绕过原指令；典型用法：\n"
+              .."  --                    return ctx.eip + 5   -- 跳过 5 字节原指令）"
   end
 
   return string.format([[
@@ -575,7 +577,6 @@ if syntaxcheck then return end
 ce_lua_hook.setup('%s', %d, %s, %s, function(ctx)
   -- TODO: 你的回调逻辑
 %s
-  -- 返回 false 跳过原指令（仅同步模式有效）
 end)
 {$asm}
 
