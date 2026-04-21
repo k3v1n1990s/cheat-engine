@@ -434,9 +434,19 @@ loadlibrary(luaclient-x86_64.dll)
 alloc(newmem,$1000,INJECT)
 alloc(ctxbuf,$200)
 alloc(hookid_str,64)
+alloc(_lh_celua_init_unused,64)
 label(hook_return)
 label(hook_original)
 registersymbol(INJECT)
+
+// 触发 CE 自动 spawn server CELUASERVER<pid> + 写 CELUA_ServerName
+// 全局到目标进程的 luaclient-x86_64.dll，否则 CELUA_ExecuteFunctionByReference
+// 静默失败（pipe 连不上）。这个 {$LUACODE} 块不被执行（落在未引用的
+// _lh_celua_init_unused alloc 区），CE 只取它的副作用。
+_lh_celua_init_unused:
+{$LUACODE}
+{$ASM}
+ret
 
 hookid_str:
 db '%s',0
