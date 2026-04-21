@@ -542,12 +542,18 @@ function ce_lua_hook.show_config_dialog(default_addr, default_module)
         module_name = edMod.Text ~= '' and edMod.Text or nil,
       }
       if config.strategy == 'module' then
-        config.module_offset = config.addr - (getAddress(config.module_name) or 0)
-        if config.module_offset < 0 then
-          messageDialog('地址不在模块内', 0, 1)
-          config = nil
+          local base = getAddress(config.module_name)
+          if not base or base == 0 then
+            messageDialog('模块未找到: '..tostring(config.module_name), 0, 1)
+            config = nil
+          else
+            config.module_offset = config.addr - base
+            if config.module_offset < 0 then
+              messageDialog('地址 '..string.format('%X', config.addr)..' 不在模块 '..config.module_name..' 内', 0, 1)
+              config = nil
+            end
+          end
         end
-      end
     end
   end
   form.destroy()
