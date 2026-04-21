@@ -387,8 +387,8 @@ local function build_address_block(config, orig_len, orig_bytes)
     add(string.format('define(INJECT, "%s"+%X)', config.module_name, config.module_offset))
   elseif config.strategy == 'aob' then
     local pattern = ce_lua_hook.extract_aob_pattern(config.addr, config.aob_length)
-    -- 估算 hook 点在签名内的偏移（默认从签名起点 hook，简单起见）
-    add(string.format('aobscanmodule(INJECT, %s, %s)', config.module_name or '<game>.exe', pattern))
+    -- module_name 在对话框校验阶段保证非空（AOB 策略必填）
+    add(string.format('aobscanmodule(INJECT, %s, %s)', config.module_name, pattern))
   else
     error('unknown strategy: '..tostring(config.strategy))
   end
@@ -541,7 +541,11 @@ function ce_lua_hook.show_config_dialog(default_addr, default_module)
         async = cbAsync.Checked,
         module_name = edMod.Text ~= '' and edMod.Text or nil,
       }
-      if config.strategy == 'module' then
+      if config.strategy == 'aob' and (config.module_name == nil or config.module_name == '') then
+          messageDialog('AOB 策略需要填写模块名', 0, 1)
+          config = nil
+        end
+        if config and config.strategy == 'module' then
           local base = getAddress(config.module_name)
           if not base or base == 0 then
             messageDialog('模块未找到: '..tostring(config.module_name), 0, 1)
