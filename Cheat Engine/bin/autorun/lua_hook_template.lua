@@ -276,6 +276,69 @@ if not ce_lua_hook._command_registered then
   ce_lua_hook._command_registered = true
 end
 
+-- ===== 反汇编 / AOB 辅助 =====
+
+-- 返回从 addr 起、覆盖至少 5 字节所需的指令总长度，以及原字节表（整数数组）。
+function ce_lua_hook.compute_orig_len(addr)
+  local total = 0
+  local cur = addr
+  while total < 5 do
+    local sz = getInstructionSize(cur)
+    if not sz or sz <= 0 then
+      error(string.format('compute_orig_len: cannot disassemble at %X', cur))
+    end
+    total = total + sz
+    cur = cur + sz
+    if total > 32 then  -- 极端兜底，防死循环
+      error('compute_orig_len: instruction stream pathological')
+    end
+  end
+  local bytes = readBytes(addr, total, true)
+  if not bytes then error(string.format('compute_orig_len: cannot read bytes at %X', addr)) end
+  return total, bytes
+end
+
+-- 把字节数组转成 AA 风格 hex 串："48 8B 41 08"
+function ce_lua_hook.bytes_to_hex(bytes)
+  local out = {}
+  for _, b in ipairs(bytes) do table.insert(out, string.format('%02X', b)) end
+  return table.concat(out, ' ')
+end
+
+-- 从 addr 起读 length 字节生成 AOB 特征。把疑似 RIP-relative 偏移 / 立即数 imm32 通配为 ??。
+-- 简化策略：扫到任一 disp32 / imm32（出现在 mov reg,imm32; call rel32; jmp rel32; lea rax,[rip+disp]）
+-- 处都把那 4 字节通配。识别靠每条指令 size 减去 opcode 前缀长度做粗判，准确性"够用"。
+-- 用法：在 hook 点附近选 length 字节生成签名，CE 的 aobscanmodule 会忠实匹配 + 通配位置。
+function ce_lua_hook.extract_aob_pattern(addr, length)
+  local raw = readBytes(addr, length, true)
+  if not raw then error(string.format('extract_aob_pattern: cannot read at %X', addr)) end
+  local mask = {}  -- true = 通配
+  for i = 1, length do mask[i] = false end
+
+  -- 走指令边界，把每条指令的最后 4 字节（如果指令长度 ≥ 5）当作可能的 disp32/imm32 通配。
+  -- 这是粗略启发式，对 RIP-relative call/jmp/lea/mov reg,imm32 都能命中；对 mov reg,reg 等短指令不动。
+  local cur = addr
+  while cur < addr + length do
+    local sz = getInstructionSize(cur)
+    if not sz or sz <= 0 then break end
+    if sz >= 5 then
+      local rel_start = cur - addr  -- 0-based
+      for i = 0, 3 do
+        local idx = rel_start + sz - 4 + i + 1  -- 1-based mask index
+        if idx >= 1 and idx <= length then mask[idx] = true end
+      end
+    end
+    cur = cur + sz
+  end
+
+  local out = {}
+  for i = 1, length do
+    if mask[i] then table.insert(out, '??')
+    else table.insert(out, string.format('%02X', raw[i])) end
+  end
+  return table.concat(out, ' ')
+end
+
 -- ===== 启动注册 =====
 
 -- CELUA_GetFunctionReferenceFromName 在 CE 主进程是 createRef 的同义包装。
