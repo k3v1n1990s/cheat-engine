@@ -198,6 +198,10 @@ local function build_hook_asm(id, xmm, async, trampoline_refid)
   -- 预先 alloc params 数组（[ctxbuf, hookid_str]）和 saved_rsp 槽
   emit('alloc('..lbl.params..',16)')
   emit('alloc('..lbl.saved_rsp..',8)')
+  -- 显式声明纯标号（CE AA 要求 label 必须先 declare 才能用作位置定义）
+  emit('label('..lbl.save..')')
+  emit('label('..lbl.restore..')')
+  emit('label('..lbl.skip..')')
   emit(lbl.params..':')
   emit('  dq ctxbuf')
   emit('  dq hookid_str')
