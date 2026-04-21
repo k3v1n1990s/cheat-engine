@@ -15,7 +15,11 @@ lua_hook_template.lua — CE Auto Assembler 模板插件
     -- x86: ctx.eax/.ecx/.../.edi (8 GPR R/W dword)，
     --      ctx.eflags / ctx.eip (eip 只读)，ctx.xmm[0..7] (XMM 开启)
     -- ctx.rsp/.esp 改了自负后果
-    -- return false 跳过原指令；其他返回值都执行原指令
+    --
+    -- 返回值控制 hook 后跳转：
+    --   return 0 / nil / 非数  → 默认（执行原指令并继续，跳到 newmem 内的 hook_original）
+    --   return <地址>          → 直接跳到该地址（不执行原指令）
+    --                              典型用法 return ctx.rip + N 跳过 N 字节原指令
   end
 
 模式：
@@ -190,9 +194,9 @@ function __ce_lua_hook_trampoline(ctxptr, hookidptr)
   snap[flags_field] = ctx[flags_field]
 
   -- 调用用户回调
-  local ok, skip = pcall(entry.fn, ctx)
+  local ok, retval = pcall(entry.fn, ctx)
   if not ok then
-    print(string.format('[lua_hook %s] ERROR: %s\n%s', id, tostring(skip), debug.traceback()))
+    print(string.format('[lua_hook %s] ERROR: %s\n%s', id, tostring(retval), debug.traceback()))
     return 0
   end
 
@@ -214,31 +218,34 @@ function __ce_lua_hook_trampoline(ctxptr, hookidptr)
     end
   end
 
-  return (skip == false) and 1 or 0
+  -- 返回 = jmp 目标地址；0 / nil / 非数 → 默认（执行原指令 = jmp hook_original）
+  if type(retval) == 'number' then return retval end
+  return 0
 end
 
 -- ===== AA 自定义命令: luahookpoint(<id>) =====
 
 -- 生成 hook 点的 ASM 字符串。id 用作所有内部标号的前缀，避免多 hook 符号冲突。
 -- bits: 32 / 64。xmm: 是否保存 XMM。async: 异步模式。
+-- 返回值约定：trampoline 返回 0 时执行原指令（默认）；返回非零地址时跳到该地址。
 local function build_hook_asm(id, bits, xmm, async, trampoline_refid)
   local async_flag = async and 1 or 0
   local lbl = {
-    save    = 'lh_'..id..'_save',
-    restore = 'lh_'..id..'_restore_exec',
-    skip    = 'lh_'..id..'_skip',
-    params  = 'lh_'..id..'_params',
-    saved_sp= 'lh_'..id..'_saved_sp',
+    save        = 'lh_'..id..'_save',
+    have_target = 'lh_'..id..'_have_target',
+    params      = 'lh_'..id..'_params',
+    saved_sp    = 'lh_'..id..'_saved_sp',
+    jmp_addr    = 'lh_'..id..'_jmp_addr',
   }
   local lines = {}
   local function emit(s) table.insert(lines, s) end
 
   -- 共用：所有 label 前置声明（位置由冒号-label 在 newmem 内固定）
   emit('label('..lbl.save..')')
-  emit('label('..lbl.restore..')')
-  emit('label('..lbl.skip..')')
+  emit('label('..lbl.have_target..')')
   emit('label('..lbl.params..')')
   emit('label('..lbl.saved_sp..')')
+  emit('label('..lbl.jmp_addr..')')
 
   if bits == 64 then
     -- =========================================================
@@ -274,32 +281,36 @@ local function build_hook_asm(id, bits, xmm, async, trampoline_refid)
     emit('  mov r9d, '..async_flag)
     emit('  call CELUA_ExecuteFunctionByReference')
     emit('  mov rsp, ['..lbl.saved_sp..']')
-    emit('  test rax, rax')
-    emit('  jnz '..lbl.skip)
 
-    -- 共用 restore 块生成器（内联避免再起函数）
-    local function emit_restore_x64(jmp_target)
-      if xmm then
-        for i = 0, 15 do
-          emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
-        end
+    -- rax = lua 返回（0 = 默认；非 0 = 跳到该地址）。先把 rax 落到 jmp_addr 槽。
+    emit('  mov ['..lbl.jmp_addr..'], rax')
+    emit('  test rax, rax')
+    emit('  jnz '..lbl.have_target)
+    emit('  lea rax, [hook_original]')              -- 默认：跳回 newmem 末尾的原指令
+    emit('  mov ['..lbl.jmp_addr..'], rax')
+
+    -- 单一恢复路径
+    emit(lbl.have_target..':')
+    if xmm then
+      for i = 0, 15 do
+        emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
       end
-      emit('  push qword ptr [ctxbuf+'..string.format('0x%X', L.rflags)..']')
-      emit('  popfq')
-      for _, r in ipairs(FIELDS) do
-        if r ~= 'rax' then emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r])) end
-      end
-      emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')
-      emit('  jmp '..jmp_target)
     end
-    emit(lbl.restore..':');  emit_restore_x64('hook_original')
-    emit(lbl.skip..':');     emit_restore_x64('hook_return')
+    emit('  push qword ptr [ctxbuf+'..string.format('0x%X', L.rflags)..']')
+    emit('  popfq')
+    for _, r in ipairs(FIELDS) do
+      if r ~= 'rax' then emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r])) end
+    end
+    emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')
+    emit('  jmp qword ptr ['..lbl.jmp_addr..']')   -- indirect jmp 到目标
 
     -- 数据块（newmem 末尾，永不执行）
     emit(lbl.params..':')
     emit('  dq ctxbuf')
     emit('  dq hookid_str')
     emit(lbl.saved_sp..':')
+    emit('  dq 0')
+    emit(lbl.jmp_addr..':')
     emit('  dq 0')
 
   else
@@ -325,42 +336,45 @@ local function build_hook_asm(id, bits, xmm, async, trampoline_refid)
       end
     end
 
-    -- 调 luaclient (stdcall: 右-左 push，callee 清栈)
-    -- 保留 esp，对齐到 16；4 个 4 字节参数 push 后仍 16-aligned
+    -- 调 luaclient (stdcall)
     emit('  mov ['..lbl.saved_sp..'], esp')
     emit('  and esp, FFFFFFF0')
-    emit('  push '..async_flag)                                    -- async
-    emit('  push '..lbl.params)                                    -- AddressOfParameters
-    emit('  push 2')                                               -- paramcount
-    emit('  push '..string.format('0x%X', trampoline_refid))       -- ref
+    emit('  push '..async_flag)
+    emit('  push '..lbl.params)
+    emit('  push 2')
+    emit('  push '..string.format('0x%X', trampoline_refid))
     emit('  call CELUA_ExecuteFunctionByReference')
-    -- stdcall 已 cleanup 16 字节；mov esp 直接覆盖
     emit('  mov esp, ['..lbl.saved_sp..']')
-    emit('  test eax, eax')
-    emit('  jnz '..lbl.skip)
 
-    local function emit_restore_x86(jmp_target)
-      if xmm then
-        for i = 0, 7 do
-          emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
-        end
+    -- eax = lua 返回；落到 jmp_addr 槽
+    emit('  mov ['..lbl.jmp_addr..'], eax')
+    emit('  test eax, eax')
+    emit('  jnz '..lbl.have_target)
+    emit('  lea eax, [hook_original]')
+    emit('  mov ['..lbl.jmp_addr..'], eax')
+
+    -- 单一恢复路径
+    emit(lbl.have_target..':')
+    if xmm then
+      for i = 0, 7 do
+        emit(string.format('  movdqu xmm%d, [ctxbuf+0x%X]', i, L.xmm0_off + i*16))
       end
-      emit('  push dword ptr [ctxbuf+'..string.format('0x%X', L.eflags)..']')
-      emit('  popfd')
-      for _, r in ipairs(FIELDS) do
-        if r ~= 'eax' then emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r])) end
-      end
-      emit('  mov eax, [ctxbuf+'..string.format('0x%X', L.eax)..']')
-      emit('  jmp '..jmp_target)
     end
-    emit(lbl.restore..':');  emit_restore_x86('hook_original')
-    emit(lbl.skip..':');     emit_restore_x86('hook_return')
+    emit('  push dword ptr [ctxbuf+'..string.format('0x%X', L.eflags)..']')
+    emit('  popfd')
+    for _, r in ipairs(FIELDS) do
+      if r ~= 'eax' then emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r])) end
+    end
+    emit('  mov eax, [ctxbuf+'..string.format('0x%X', L.eax)..']')
+    emit('  jmp dword ptr ['..lbl.jmp_addr..']')
 
     -- 数据块
     emit(lbl.params..':')
     emit('  dd ctxbuf')
     emit('  dd hookid_str')
     emit(lbl.saved_sp..':')
+    emit('  dd 0')
+    emit(lbl.jmp_addr..':')
     emit('  dd 0')
   end
 
@@ -506,13 +520,19 @@ function ce_lua_hook.build_enable_script(config)
     ctxbuf_size = '$200'
     sample_cb = "  -- 例: print(string.format('rax=%%X rip=%%X', ctx.rax, ctx.rip))\n"
               .."  -- 修改 ctx.rax / ctx.rcx ... 会在 hook 返回时写回真实寄存器\n"
-              .."  -- 用 readBytes(ctx.rsp + N, ...) 读栈"
+              .."  -- 用 readBytes(ctx.rsp + N, ...) 读栈\n"
+              .."  -- return 0 / nil  → 默认（执行原指令并继续）\n"
+              .."  -- return <addr>   → 跳到该地址（绕过原指令；常见用法\n"
+              ..[[  --                    return ctx.rip + 5  -- 跳过 5 字节原指令]]
   else
     dll = 'luaclient-i386.dll'
     ctxbuf_size = '$100'
     sample_cb = "  -- 例: print(string.format('eax=%%X eip=%%X', ctx.eax, ctx.eip))\n"
               .."  -- 修改 ctx.eax / ctx.ecx ... 会在 hook 返回时写回真实寄存器\n"
-              .."  -- 用 readBytes(ctx.esp + N, ...) 读栈"
+              .."  -- 用 readBytes(ctx.esp + N, ...) 读栈\n"
+              .."  -- return 0 / nil  → 默认（执行原指令并继续）\n"
+              .."  -- return <addr>   → 跳到该地址（绕过原指令；常见用法\n"
+              ..[[  --                    return ctx.eip + 5  -- 跳过 5 字节原指令]]
   end
 
   return string.format([[
