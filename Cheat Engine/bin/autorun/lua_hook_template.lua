@@ -28,6 +28,14 @@ lua_hook_template.lua — CE Auto Assembler 模板插件
 
 设计文档：
   docs/superpowers/specs/2026-04-21-ce-aa-lua-hook-plugin-design.md
+
+注意事项：
+  - 不要在回调里调模态 UI（messageDialog/ShowModal 等）。同步模式下
+    回调跑在 CE 主 GUI 线程，模态会泵消息让其它 hook 重入；目标进程
+    多线程命中同一 hook 时也会通过 luaclient pipe 串行排队。短小回调
+    最安全。
+  - 改 ctx.rsp / ctx.rip 后果自负——前者会破栈，后者本插件不实现跳转
+    （改了也无效）。
 ]]
 
 if ce_lua_hook ~= nil then
