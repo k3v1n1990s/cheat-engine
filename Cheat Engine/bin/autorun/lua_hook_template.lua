@@ -1,7 +1,34 @@
--- lua_hook_template.lua
--- CE Auto Assembler 模板插件：在任意代码点生成 inline hook，保存上下文并回调 Lua。
--- Spec: docs/superpowers/specs/2026-04-21-ce-aa-lua-hook-plugin-design.md
--- Loaded automatically from bin/autorun/ on CE startup.
+--[[
+lua_hook_template.lua — CE Auto Assembler 模板插件
+
+功能：
+  在 Memory Viewer 里按 Ctrl+Alt+L（或 AA 编辑器 Template 菜单选 "Lua Hook
+  (Ctx → Callback)"），生成一份完整的 inline hook 脚本：hook 触发时保存
+  全部 GPR/RFLAGS（可选 XMM），通过 luaclient 回调用户在 {$lua} 块里写的
+  Lua 函数；回调可读写 ctx.rax/.../.rflags、用 ctx.rsp 访问栈、返回 false
+  跳过原指令。
+
+回调签名：
+  function(ctx)
+    -- ctx.rax, ctx.rcx, ..., ctx.r15 (R/W qword)
+    -- ctx.rsp                         (R/W; 改它你自负后果)
+    -- ctx.rflags                       (R/W qword)
+    -- ctx.rip                          (R only, = 原指令地址)
+    -- ctx.xmm[0..15]                   (R/W 16 字节 byte 表，仅 XMM 开启)
+    -- return false 跳过原指令；其他返回值都执行原指令
+  end
+
+模式：
+  - 同步（默认）：注入代码线程阻塞等回调返回；写 ctx 生效；return false 生效。
+  - ASYNC：回调在 CE server 线程跑，注入代码立即继续；写 ctx 不生效；
+    return false 不生效。仅在高频 hook（每秒上千次）必须不卡游戏时使用。
+
+依赖：
+  luaclient-x86_64.dll（CE 自带），由模板的 [ENABLE] 头部 loadlibrary 装入。
+
+设计文档：
+  docs/superpowers/specs/2026-04-21-ce-aa-lua-hook-plugin-design.md
+]]
 
 if ce_lua_hook ~= nil then
   -- 已加载过（autorun 重载），先清理旧注册项
