@@ -140,4 +140,29 @@ function __ce_lua_hook_trampoline(ctxptr, hookidptr)
   return (skip == false) and 1 or 0
 end
 
+-- ===== AA 自定义命令: luahookpoint(<id>) =====
+
+local function luahookpoint_expander(params, syntaxcheck)
+  -- params 是括号里的内容：去除空白
+  local id = (params or ''):gsub('^%s+', ''):gsub('%s+$', '')
+
+  -- 校验 ID 字符
+  if #id == 0 or #id > 63 or id:find('[^%w_]') then
+    return nil, '[luahookpoint] invalid id: '..tostring(id)..' (need [A-Za-z0-9_], length 1-63)'
+  end
+
+  if syntaxcheck == 1 then
+    return ''  -- phase 1 不生成代码，只校验
+  end
+
+  -- phase 2 暂未实现，下个 task 写
+  return nil, '[luahookpoint] phase 2 not implemented yet'
+end
+
+-- 注册（顶层执行，autorun 时立即注册）
+if not ce_lua_hook._command_registered then
+  registerAutoAssemblerCommand('luahookpoint', luahookpoint_expander)
+  ce_lua_hook._command_registered = true
+end
+
 print('[lua_hook_template] loaded (skeleton)')
