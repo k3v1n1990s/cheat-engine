@@ -276,4 +276,9 @@ if not ce_lua_hook._command_registered then
   ce_lua_hook._command_registered = true
 end
 
-print('[lua_hook_template] loaded (skeleton)')
+-- ===== 启动注册 =====
+
+-- CELUA_GetFunctionReferenceFromName 在 CE 主进程是 createRef 的同义包装。
+-- __ce_lua_hook_trampoline 已是全局，createRef 拿到它的引用 id。
+ce_lua_hook._trampoline_ref = createRef(__ce_lua_hook_trampoline)
+print(string.format('[lua_hook_template] trampoline ref = %d', ce_lua_hook._trampoline_ref))
