@@ -533,3 +533,38 @@ end
 -- __ce_lua_hook_trampoline 已是全局，createRef 拿到它的引用 id。
 ce_lua_hook._trampoline_ref = createRef(__ce_lua_hook_trampoline)
 print(string.format('[lua_hook_template] trampoline ref = %d', ce_lua_hook._trampoline_ref))
+
+-- ===== AA 模板 handler =====
+
+local function template_handler(script, sender)
+  -- script 是 TStrings；sender 是 TFrmAutoInject
+  -- 取当前 Memory Viewer 的光标地址作为默认 INJECT 地址
+  local mv = getMemoryViewForm()
+  local addr = mv and mv.DisassemblerView.SelectedAddress or 0
+  -- 模块名猜测
+  local mod = nil
+  if addr > 0 then
+    local _, modname = pcall(function() return getNameFromAddress(addr) end)
+    if type(modname) == 'string' then
+      mod = modname:match('^([^%.]+%.[^+]+)') or modname  -- 截 "kernel32.dll" 部分
+    end
+  end
+
+  local config = ce_lua_hook.show_config_dialog(addr, mod)
+  if not config then return end
+
+  local ok, scriptText = pcall(ce_lua_hook.build_enable_script, config)
+  if not ok then
+    messageDialog('生成脚本失败: '..tostring(scriptText), 0, 1)
+    return
+  end
+
+  -- 直接覆盖编辑器内容（CE 模板的标准做法）
+  script.Text = scriptText
+end
+
+if ce_lua_hook._template_id == nil then
+  ce_lua_hook._template_id = registerAutoAssemblerTemplate(
+    'Lua Hook (Ctx → Callback)', template_handler, 'Ctrl+Alt+L')
+  print(string.format('[lua_hook_template] template registered, id=%d', ce_lua_hook._template_id))
+end
