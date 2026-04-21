@@ -241,7 +241,7 @@ local function build_hook_asm(id, xmm, async, trampoline_refid)
       emit(string.format('  mov %s, [ctxbuf+0x%X]', r, L[r]))
     end
   end
-  emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')
+  emit('  mov rax, [ctxbuf+'..string.format('0x%X', L.rax)..']')   -- rax 最后恢复
   emit('  jmp hook_return')
 
   return table.concat(lines, '\n')
