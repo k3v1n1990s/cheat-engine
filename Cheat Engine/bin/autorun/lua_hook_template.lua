@@ -108,7 +108,7 @@ function __ce_lua_hook_trampoline(ctxptr, hookidptr)
     end
   end
 
-  -- 快照（GPR + rflags；xmm 是 byte 表，diff 直接比 table identity 不可靠，下面用 element-wise 比较）
+  -- 快照 GPR + rflags 用于回写时 diff（避免无谓 writeQword）。xmm 不快照——见下方写回处的说明。
   local snap = {}
   for _, name in ipairs(ce_lua_hook.GPR_FIELDS) do snap[name] = ctx[name] end
   snap.rflags = ctx.rflags
@@ -127,6 +127,9 @@ function __ce_lua_hook_trampoline(ctxptr, hookidptr)
     end
     if ctx.rflags ~= snap.rflags then writeQword(ctxptr + L.rflags, ctx.rflags) end
     -- rip 不回写（用户改 rip 我们也不实现跳转，spec §4.3）
+    -- xmm 写回：启用 XMM 时无条件回写全部 16 个槽位（不做 byte-wise diff，
+    -- 因为深拷贝 16×16 字节快照对每次 hook 命中都是无谓开销；高频 hook 应改用
+    -- ASYNC 模式整段跳过回写）。
     if entry.xmm and ctx.xmm then
       for i = 0, 15 do
         if ctx.xmm[i] ~= nil then writeBytes(ctxptr + L.xmm0_off + i * 16, ctx.xmm[i]) end
