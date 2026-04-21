@@ -67,4 +67,74 @@ end
 function ce_lua_hook.is_xmm(id) local e = ce_lua_hook._registry[id]; return e and e.xmm or false end
 function ce_lua_hook.is_async(id) local e = ce_lua_hook._registry[id]; return e and e.async or false end
 
+-- ===== 注入代码调用的全局入口 =====
+-- 由注入代码通过 CELUA_ExecuteFunctionByReference 调用。
+-- 参数: ctxptr (qword), hookidptr (qword 指向 0 结尾 ASCII 字符串)
+-- 返回: 0 = 执行原指令; 1 = 跳过原指令
+
+function __ce_lua_hook_trampoline(ctxptr, hookidptr)
+  if ctxptr == 0 or hookidptr == 0 then return 0 end
+
+  -- readString 自动遇 0 终止；第 3 参数 widechar=false
+  local id = readString(hookidptr, 63, false)
+  if not id or #id == 0 then return 0 end
+
+  local entry = ce_lua_hook._registry[id]
+  if not entry then return 0 end  -- DISABLE 竞态，安全
+
+  local L = ce_lua_hook.LAYOUT
+  local size = entry.xmm and L.size_with_xmm or L.size_no_xmm
+  local raw = readBytes(ctxptr, size, true)
+  if not raw then return 0 end  -- 目标已死
+
+  -- 把 raw byte 数组按 8 字节小端拼回 qword
+  local function rd_qword(off)
+    local v = 0
+    for i = 7, 0, -1 do v = v * 256 + raw[off + 1 + i] end
+    return v
+  end
+
+  -- 构建 ctx 表
+  local ctx = {}
+  for _, name in ipairs(ce_lua_hook.GPR_FIELDS) do
+    ctx[name] = rd_qword(L[name])
+  end
+  ctx.rflags = rd_qword(L.rflags)
+  ctx.rip    = rd_qword(L.rip)
+  if entry.xmm then
+    ctx.xmm = {}
+    for i = 0, 15 do
+      ctx.xmm[i] = readBytes(ctxptr + L.xmm0_off + i * 16, 16, true)
+    end
+  end
+
+  -- 快照（GPR + rflags；xmm 是 byte 表，diff 直接比 table identity 不可靠，下面用 element-wise 比较）
+  local snap = {}
+  for _, name in ipairs(ce_lua_hook.GPR_FIELDS) do snap[name] = ctx[name] end
+  snap.rflags = ctx.rflags
+
+  -- 调用用户回调
+  local ok, skip = pcall(entry.fn, ctx)
+  if not ok then
+    print(string.format('[lua_hook %s] ERROR: %s\n%s', id, tostring(skip), debug.traceback()))
+    return 0
+  end
+
+  -- async 模式跳过 diff 回写（spec §4.3）
+  if not entry.async then
+    for _, name in ipairs(ce_lua_hook.GPR_FIELDS) do
+      if ctx[name] ~= snap[name] then writeQword(ctxptr + L[name], ctx[name]) end
+    end
+    if ctx.rflags ~= snap.rflags then writeQword(ctxptr + L.rflags, ctx.rflags) end
+    -- rip 不回写（用户改 rip 我们也不实现跳转，spec §4.3）
+    if entry.xmm and ctx.xmm then
+      for i = 0, 15 do
+        if ctx.xmm[i] ~= nil then writeBytes(ctxptr + L.xmm0_off + i * 16, ctx.xmm[i]) end
+      end
+    end
+  end
+
+  return (skip == false) and 1 or 0
+end
+
 print('[lua_hook_template] loaded (skeleton)')
