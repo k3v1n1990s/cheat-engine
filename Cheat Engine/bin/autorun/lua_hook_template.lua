@@ -108,8 +108,13 @@ function ce_lua_hook.is_async(id) local e = ce_lua_hook._registry[id]; return e 
 -- 返回: 0 = 执行原指令; 1 = 跳过原指令
 
 function __ce_lua_hook_trampoline(ctxptr, hookidptr)
-  -- 诊断：无条件打印调用，确认 trampoline 真的被注入代码调到
-  print(string.format('[lua_hook trampoline] called ctxptr=%X hookidptr=%X', ctxptr, hookidptr))
+  -- 诊断 1：无条件计数器，确认 trampoline 被调到（不依赖 print 的输出路径）
+  ce_lua_hook._diag_call_count = (ce_lua_hook._diag_call_count or 0) + 1
+  ce_lua_hook._diag_last_ctxptr = ctxptr
+  ce_lua_hook._diag_last_hookidptr = hookidptr
+  -- 诊断 2：尝试 print（如果 trampoline 跑在 server lua state，print 可能不接主 memo）
+  print(string.format('[lua_hook trampoline] call#%d ctxptr=%X hookidptr=%X',
+    ce_lua_hook._diag_call_count, ctxptr, hookidptr))
   if ctxptr == 0 or hookidptr == 0 then return 0 end
 
   -- readString 自动遇 0 终止；第 3 参数 widechar=false
