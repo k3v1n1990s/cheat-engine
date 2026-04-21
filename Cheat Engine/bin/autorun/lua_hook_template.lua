@@ -571,8 +571,8 @@ local function template_handler(script, sender)
   -- 模块名猜测
   local mod = nil
   if addr > 0 then
-    local _, modname = pcall(function() return getNameFromAddress(addr) end)
-    if type(modname) == 'string' then
+    local ok, modname = pcall(getNameFromAddress, addr)
+    if ok and type(modname) == 'string' then
       mod = modname:match('^([^%.]+%.[^+]+)') or modname  -- 截 "kernel32.dll" 部分
     end
   end
