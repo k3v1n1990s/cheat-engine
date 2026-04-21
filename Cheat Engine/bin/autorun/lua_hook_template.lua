@@ -509,7 +509,7 @@ function ce_lua_hook.show_config_dialog(default_addr, default_module)
   rgStrategy.Items.add('硬编码 (define INJECT, addr)')
   rgStrategy.Items.add('模块偏移 ("game.exe"+offset)')
   rgStrategy.Items.add('AOB 签名 (aobscanmodule)')
-  rgStrategy.ItemIndex = 2  -- 默认 AOB
+  rgStrategy.ItemIndex = 0  -- 默认硬编码
 
   -- AOB 长度
   lbl(170, 'AOB 长度 (字节, 仅 AOB 策略):')
