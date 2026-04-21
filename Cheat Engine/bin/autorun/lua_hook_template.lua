@@ -439,6 +439,94 @@ ce_lua_hook.cleanup('%s')
   )
 end
 
+-- ===== 配置对话框 =====
+
+-- 返回 config 表或 nil（取消）
+function ce_lua_hook.show_config_dialog(default_addr, default_module)
+  local form = createForm(false)
+  form.Caption = 'Lua Hook Template'
+  form.Width = 460
+  form.Height = 380
+  form.Position = 'poScreenCenter'
+  form.BorderStyle = 'bsDialog'
+
+  local function lbl(y, text)
+    local l = createLabel(form); l.Top = y; l.Left = 12; l.Caption = text; return l
+  end
+
+  -- ID
+  lbl(12, 'Hook ID (唯一标识，用于符号前缀):')
+  local edId = createEdit(form); edId.Top = 32; edId.Left = 12; edId.Width = 420
+  edId.Text = string.format('hook_%06X', default_addr or 0)
+
+  -- 策略
+  lbl(64, '地址策略:')
+  local rgStrategy = createRadioGroup(form)
+  rgStrategy.Top = 84; rgStrategy.Left = 12; rgStrategy.Width = 300; rgStrategy.Height = 80
+  rgStrategy.Items.add('硬编码 (define INJECT, addr)')
+  rgStrategy.Items.add('模块偏移 ("game.exe"+offset)')
+  rgStrategy.Items.add('AOB 签名 (aobscanmodule)')
+  rgStrategy.ItemIndex = 2  -- 默认 AOB
+
+  -- AOB 长度
+  lbl(170, 'AOB 长度 (字节, 仅 AOB 策略):')
+  local edAobLen = createEdit(form); edAobLen.Top = 190; edAobLen.Left = 12; edAobLen.Width = 80
+  edAobLen.Text = '32'
+
+  -- 模块名
+  lbl(170, '                                          模块名 (模块偏移/AOB):')
+  local edMod = createEdit(form); edMod.Top = 190; edMod.Left = 240; edMod.Width = 192
+  edMod.Text = default_module or ''
+
+  -- 选项
+  local cbXmm = createCheckBox(form); cbXmm.Top = 230; cbXmm.Left = 12
+  cbXmm.Caption = '保存 XMM (xmm0..xmm15)'
+  local cbAsync = createCheckBox(form); cbAsync.Top = 252; cbAsync.Left = 12
+  cbAsync.Caption = 'ASYNC (回调退化为只读、return false 不跳过原指令)'
+
+  local lblWarn = createLabel(form); lblWarn.Top = 274; lblWarn.Left = 12
+  lblWarn.Caption = ''
+  cbAsync.OnChange = function() lblWarn.Caption = cbAsync.Checked
+    and '⚠ 异步模式：写 ctx.rax 等不生效；return false 不再跳过原指令。' or '' end
+
+  -- OK / Cancel
+  local btnOk = createButton(form); btnOk.Top = 310; btnOk.Left = 280; btnOk.Width = 70
+  btnOk.Caption = 'OK'; btnOk.ModalResult = 1  -- mrOk
+  local btnCancel = createButton(form); btnCancel.Top = 310; btnCancel.Left = 360; btnCancel.Width = 70
+  btnCancel.Caption = 'Cancel'; btnCancel.ModalResult = 2  -- mrCancel
+
+  local mr = form.ShowModal()
+  local config = nil
+  if mr == 1 then
+    -- 校验
+    local id = edId.Text:gsub('^%s+', ''):gsub('%s+$', '')
+    if #id == 0 or id:find('[^%w_]') then
+      messageDialog('Hook ID 非法（需 [A-Za-z0-9_]，长度 1-63）', 0, 1)
+    elseif ce_lua_hook._registry[id] ~= nil then
+      messageDialog('Hook ID 已被占用：'..id, 0, 1)
+    else
+      config = {
+        id = id,
+        addr = default_addr,
+        strategy = ({ [0]='hardcode', [1]='module', [2]='aob' })[rgStrategy.ItemIndex],
+        aob_length = tonumber(edAobLen.Text) or 32,
+        xmm = cbXmm.Checked,
+        async = cbAsync.Checked,
+        module_name = edMod.Text ~= '' and edMod.Text or nil,
+      }
+      if config.strategy == 'module' then
+        config.module_offset = config.addr - (getAddress(config.module_name) or 0)
+        if config.module_offset < 0 then
+          messageDialog('地址不在模块内', 0, 1)
+          config = nil
+        end
+      end
+    end
+  end
+  form.destroy()
+  return config
+end
+
 -- ===== 启动注册 =====
 
 -- CELUA_GetFunctionReferenceFromName 在 CE 主进程是 createRef 的同义包装。
