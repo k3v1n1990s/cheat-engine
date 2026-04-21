@@ -108,6 +108,8 @@ function ce_lua_hook.is_async(id) local e = ce_lua_hook._registry[id]; return e 
 -- 返回: 0 = 执行原指令; 1 = 跳过原指令
 
 function __ce_lua_hook_trampoline(ctxptr, hookidptr)
+  -- 诊断：无条件打印调用，确认 trampoline 真的被注入代码调到
+  print(string.format('[lua_hook trampoline] called ctxptr=%X hookidptr=%X', ctxptr, hookidptr))
   if ctxptr == 0 or hookidptr == 0 then return 0 end
 
   -- readString 自动遇 0 终止；第 3 参数 widechar=false
