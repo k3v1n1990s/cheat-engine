@@ -195,7 +195,7 @@ local function build_hook_asm(id, xmm, async, trampoline_refid)
   -- MS x64 ABI: rcx, rdx, r8, r9 是前 4 参数。需要 16 字节栈对齐 + 0x20 shadow。
   -- 用 r11 保存原 rsp，对齐 rsp，调完恢复。r11 是 volatile 已无用。
   emit('  mov ['..lbl.saved_rsp..'], rsp')
-  emit('  and rsp, -0x10')
+  emit('  and rsp, FFFFFFFFFFFFFFF0')
   emit('  sub rsp, 0x20')
   emit('  mov ecx, '..string.format('0x%X', trampoline_refid))
   emit('  mov edx, 2')
